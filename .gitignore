@@ -1,3 +1,6 @@
+# secret info for api access
+api_credentials.txt
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
