@@ -1,6 +1,10 @@
 # secret info for api access
 api_credentials.txt
 
+# all image files
+data/**/*.png
+data/**/*.jpg
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
