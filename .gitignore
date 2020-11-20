@@ -4,6 +4,7 @@ api_credentials.txt
 # all image files
 data/**/*.png
 data/**/*.jpg
+meta_data.json
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
