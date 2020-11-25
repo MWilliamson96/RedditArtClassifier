@@ -3,11 +3,6 @@ import sys
 import pathlib
 import os
 import shutil
-src_path = pathlib.Path().absolute().parent / "src"
-data_path = pathlib.Path().absolute().parent / "data"
-
-# add src path to sys.path so it is searched in import statements
-sys.path.append(str(src_path))
 
 # basic imports for data retreival and manipulation
 import requests
@@ -22,24 +17,84 @@ import json
 import praw
 from psaw import PushshiftAPI
 
-# retrieve api credentials from .gitignore'd text file
-secrets_path = src_path / 'api_credentials.txt'
-secrets_txt = open(secrets_path, 'r')
+def get_api_instance(src_path):
+    # retrieve api credentials from .gitignore'd text file
+    secrets_path = src_path / 'api_credentials.txt'
+    secrets_txt = open(secrets_path, 'r')
 
-my_id = secrets_txt.readline().split('=')[1].rstrip()
-my_secret = secrets_txt.readline().split('=')[1].rstrip()
+    my_id = secrets_txt.readline().split('=')[1].rstrip()
+    my_secret = secrets_txt.readline().split('=')[1].rstrip()
+    my_agent = secrets_txt.readline().split('=')[1].rstrip()
 
-secrets_txt.close()
+    secrets_txt.close()
 
-# create a praw and pushshitft instances
-reddit = praw.Reddit(
-     client_id=my_id,
-     client_secret=my_secret,
-     user_agent="test_script by u/Mizule_RL"
- )
+    # create a praw and pushshitft instances
+    reddit = praw.Reddit(
+         client_id=my_id,
+         client_secret=my_secret,
+         user_agent=my_agent)
 
-s_api = PushshiftAPI(reddit)
+    s_api = PushshiftAPI(reddit)
+    
+    return s_api
 
+def establish_binary_directory(directory_path):
+    '''
+    creates a directory structure to store the dataset
+    
+    Parameters:
+        -- directory_path: a pathlib.path object where the directory is to be created
+        
+    Returns:
+        None
+    '''
+    os.mkdir(str(directory_path / 'binary_tts'))
+    for split in ['train', 'val', 'test']:
+        os.mkdir(str(directory_path / 'binary_tts' / split))
+        for category in ['digital', 'non_digital']:
+            os.mkdir(str(directory_path / 'binary_tts' / split / category))
+
+def download_and_store_binary(toc, store_path, ttvs):
+    btrain_path = store_path / 'train'
+    binary_balance_train = get_dir_balance(btrain_path)
+    btest_path = store_path / 'test'
+    binary_balance_test = get_dir_balance(btest_path)
+    bval_path = store_path / 'val'
+    binary_balance_val = get_dir_balance(bval_path)
+    for category in ['digital', 'non_digital']:
+        count = 1
+        for post in toc:
+            if (post['medium'] == 'digital' and category == 'digital') or (post['medium'] != 'digital' and category == 'non_digital'):
+                print(f"downloading {post['id']} with {sum(ttvs) - count} remaining in {category}")
+                if binary_balance_train[category] < ttvs[0]:
+                    download_path = btrain_path / category
+                    download_image(post, download_path)
+                    binary_balance_train[category] += 1
+                elif binary_balance_test[category] < ttvs[1]:
+                    download_path = btest_path / category
+                    download_image(post, download_path)
+                    binary_balance_test[category] += 1
+                elif binary_balance_val[category] < ttvs[2]:
+                    download_path = bval_path / category
+                    download_image(post, download_path)
+                    binary_balance_val[category] += 1
+                count += 1
+
+def download_image(post, path):
+    file_name = f"{post['id']}.{post['url'][-3:]}"
+    file_path = path / file_name
+    if file_path.is_file():
+        print(f'{file_name} already exists')
+    else:
+        try:
+            response = requests.get(post['url'])
+            file = open(str(file_path), "wb")
+            file.write(response.content)
+            file.close()
+        except:
+            print('error downloading, trying again')
+            download_image(post, path)
+            
 def get_wordlists():
     '''
     returns a dictionary containing regex patterns of the keywords for each class
@@ -64,7 +119,9 @@ def validate_submission(post):
     '''
     if post.selftext in ['[deleted]', '[removed]']:
         return False
-    link_format = 'https://i\.redd\.it/.{13}\.(jpg|png)'
+    if post.upvote_ratio < .4:
+        return False
+    link_format = 'https://i\.redd\.it/.{13}\.jpg'
     corpus = []
     wordlists = get_wordlists()
     for value in wordlists.values():
@@ -125,28 +182,50 @@ def make_post_dict_no_obj(post):
                  'unix_time': int(post.created_utc)}
     return post_dict
 
-def fetch_submissions(min_posts, date = int(dt.datetime.now().timestamp())):
+def fetch_balanced_submissions(n_to_fetch, s_api, date=int(dt.datetime.now().timestamp()), current_balance=None, binary=False):
+    class_counts = {}
+    # taking into account the current class balance if data has already been downloaded
+    if type(current_balance) == dict:
+        class_counts = current_balance
+    elif binary:
+        class_counts = {'digital': 0, 'non_digital': 0}
+    else:
+        class_counts = dict(zip(list(get_wordlists().keys()), [0 for _ in get_wordlists().keys()]))
     start_epoch = date
-    data_size = min_posts
-
+    data_size = n_to_fetch + sum(list(class_counts.values()))
+    n_per_class = int(data_size / len(class_counts.keys()))
+    print((n_per_class, data_size))
     collected_posts = []
-    while len(collected_posts) < data_size:
-        print(f'polling pushshift for {data_size - len(collected_posts)} more posts before {start_epoch}')
+    while len(collected_posts) < n_to_fetch:
+        print(f'polling pushshift for {n_to_fetch - len(collected_posts)} more posts before {start_epoch}')
         batch = list(s_api.search_submissions(before=start_epoch, subreddit='Art', limit=1000))
         for post in batch:
             if validate_submission(post):
-                collected_posts.append(post)
+                if not binary:
+                    if class_counts[extract_medium_from_title(post.title)] < n_per_class:
+                        collected_posts.append(post)
+                        class_counts[extract_medium_from_title(post.title)] += 1
+                else:
+                    if extract_medium_from_title(post.title) == 'digital' and class_counts['digital'] < n_per_class:
+                        collected_posts.append(post)
+                        class_counts['digital'] += 1
+                    elif extract_medium_from_title(post.title) in ['ink', 'non_ink_drawing', 'paint', 'sculpture'] and class_counts['non_digital'] < n_per_class:
+                        collected_posts.append(post)
+                        class_counts['non_digital'] += 1
         start_epoch = int(batch[-1].created_utc)
     return collected_posts
 
-# functions for locating posts by id for data exploration purposes
+def get_dir_balance(dir_path):
+    current_b = {}
+    with os.scandir(dir_path) as t_scan:
+        for class_name in t_scan:
+            if class_name.is_dir():
+                class_path = dir_path / class_name.name
+                current_b[class_name.name] = len(list(os.listdir(class_path)))
+    return current_b
 
-def find_submission_dict_by_id(id_str):
+# function for locating posts by id for data exploration purposes
+def find_submission_dict_by_id(id_str, table_of_contents):
     for post in table_of_contents:
         if post['id'] == id_str:
             return post
-        
-def find_submission_obj_by_id(id_str):
-    for post in table_of_contents:
-        if post['id'] == id_str:
-            return post['post']
