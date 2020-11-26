@@ -68,16 +68,13 @@ def download_and_store_binary(toc, store_path, ttvs):
                 print(f"downloading {post['id']} with {sum(ttvs) - count} remaining in {category}")
                 if binary_balance_train[category] < ttvs[0]:
                     download_path = btrain_path / category
-                    download_image(post, download_path)
-                    binary_balance_train[category] += 1
+                    binary_balance_train[category] += download_image(post, download_path)
                 elif binary_balance_test[category] < ttvs[1]:
                     download_path = btest_path / category
-                    download_image(post, download_path)
-                    binary_balance_test[category] += 1
+                    binary_balance_test[category] += download_image(post, download_path)
                 elif binary_balance_val[category] < ttvs[2]:
                     download_path = bval_path / category
-                    download_image(post, download_path)
-                    binary_balance_val[category] += 1
+                    binary_balance_val[category] += download_image(post, download_path)
                 count += 1
 
 def download_image(post, path):
@@ -85,12 +82,14 @@ def download_image(post, path):
     file_path = path / file_name
     if file_path.is_file():
         print(f'{file_name} already exists')
+        return 0
     else:
         try:
             response = requests.get(post['url'])
             file = open(str(file_path), "wb")
             file.write(response.content)
             file.close()
+            return 1
         except:
             print('error downloading, trying again')
             download_image(post, path)
@@ -121,7 +120,7 @@ def validate_submission(post):
         return False
     if post.upvote_ratio < .4:
         return False
-    link_format = 'https://i\.redd\.it/.{13}\.jpg'
+    link_format = 'https://i\.redd\.it/.{13}\.(jpg|png)'
     corpus = []
     wordlists = get_wordlists()
     for value in wordlists.values():
@@ -168,6 +167,7 @@ def make_post_dict(post):
                  'url': post.url, 
                  'id': post.id,
                  'unix_time': int(post.created_utc),
+                 'self_text': post.selftext,
                  'post': post}
     return post_dict
 
@@ -189,6 +189,7 @@ def fetch_balanced_submissions(n_to_fetch, s_api, date=int(dt.datetime.now().tim
         class_counts = current_balance
     elif binary:
         class_counts = {'digital': 0, 'non_digital': 0}
+        subclass_counts = {'ink': 0, 'non_ink_drawing': 0, 'paint': 0, 'sculpture': 0}
     else:
         class_counts = dict(zip(list(get_wordlists().keys()), [0 for _ in get_wordlists().keys()]))
     start_epoch = date
@@ -210,8 +211,11 @@ def fetch_balanced_submissions(n_to_fetch, s_api, date=int(dt.datetime.now().tim
                         collected_posts.append(post)
                         class_counts['digital'] += 1
                     elif extract_medium_from_title(post.title) in ['ink', 'non_ink_drawing', 'paint', 'sculpture'] and class_counts['non_digital'] < n_per_class:
-                        collected_posts.append(post)
-                        class_counts['non_digital'] += 1
+                        if subclass_counts[extract_medium_from_title(post.title)] < (n_per_class / 4):
+                            
+                            collected_posts.append(post)
+                            subclass_counts[extract_medium_from_title(post.title)] += 1
+                            class_counts['non_digital'] += 1
         start_epoch = int(batch[-1].created_utc)
     return collected_posts
 
