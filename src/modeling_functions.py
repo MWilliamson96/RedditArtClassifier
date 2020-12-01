@@ -48,9 +48,13 @@ def make_image_generators(split_path):
 
 def make_model():
     model = models.Sequential()
-    model.add(layers.Conv2D(35, (3, 3), activation='relu', input_shape=(300, 300, 3)))
+    model.add(layers.Conv2D(35, (3, 3), activation='tanh', input_shape=(300, 300, 3)))
     model.add(layers.MaxPooling2D((5, 5)))
+    model.add(layers.Conv2D(20, (3, 3), activation='relu'))
+    model.add(layers.MaxPooling2D((3, 3)))
     model.add(layers.Flatten())
+    model.add(layers.Dense(40, activation='relu'))
+    model.add(layers.Dropout(.2))
     model.add(layers.Dense(40, activation='relu'))
     model.add(layers.Dropout(.2))
     model.add(layers.Dense(40, activation='relu'))
