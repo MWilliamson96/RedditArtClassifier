@@ -52,6 +52,15 @@ the low level features since tanh can produce negative activations while relu ca
 
 ## Model Evaluation
 
+Overall my model was able to achieve __ accuracy which is significantly better than randomly guessing, but still not quite as good as I had hoped 
+to achieve. The main issue is a severe underperformance when predicting on images that have been produced digitally. I think this is partly due to 
+many digitally produced images being created with the intention of mimiking traditional art media. This can be seen in the sample images that were 
+misclassified by my model below. Additionally it appears that my model had some difficulty distinguishing between digital art and sculptures. I believe 
+this is in part due to the fact that many digital images also strive for photorealism and the model then begins to think that real images of sculptures 
+are actually digital images. The model was generally pretty good at identifying images that were not produced using digital means, but of the non-digital 
+images it did misclassify, a significant percentage were sculptures.
+
+![sample image 1]()
 
 ## Conclusion and Potential Improvements  
 
