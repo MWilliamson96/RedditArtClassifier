@@ -18,6 +18,10 @@ could then be used to classify new images by which subreddit they should be post
 as r/Art while a meme might get classified as r/memes). This type of classification would require a slightly different model architecture 
 but the overall process developed in this project would lend itself nicely to this extrapolation.
 
+## The Repository
+
+
+
 ## The Data
 
 To gather the data used in this project, I used the [Python Reddit API Wrapper (PRAW)](https://praw.readthedocs.io/en/latest/getting_started/quick_start.html) coupled with the [PushShift API (PSAW)](https://github.com/pushshift/api). I used the APIs 
@@ -52,6 +56,10 @@ the low level features since tanh can produce negative activations while relu ca
 
 ## Model Evaluation
 
+Below is the confusion matrix for my model's predictions on the validation data
+
+![test set matrix](reports/figures/charts/final_validation_heatmap.png)
+
 Overall my model was able to achieve __ accuracy which is significantly better than randomly guessing, but still not quite as good as I had hoped 
 to achieve. The main issue is a severe underperformance when predicting on images that have been produced digitally. I think this is partly due to 
 many digitally produced images being created with the intention of mimiking traditional art media. This can be seen in the sample images that were 
@@ -60,7 +68,12 @@ this is in part due to the fact that many digital images also strive for photore
 are actually digital images. The model was generally pretty good at identifying images that were not produced using digital means, but of the non-digital 
 images it did misclassify, a significant percentage were sculptures.
 
-![sample image 1]()
+![sample image 1](reports/figures/example_images/g71e7t.jpg)
+This image is a sculpture, however the style and material used appears to resemble other medium types which may be confusing the model
+![sample image 2](reports/figures/example_images/jn7aru.jpg)
+This image was produced digitaly, though it is extraordinarily similar to a graphite drawing
+![sample image 3](reports/figures/example_images/jn8b8n.jpg)
+This image was also produced digitaly, though again the photorealism is truly stunning and difficult for the model to discern
 
 ## Conclusion and Potential Improvements  
 
