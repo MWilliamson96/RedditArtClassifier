@@ -18,6 +18,15 @@ import praw
 from psaw import PushshiftAPI
 
 def get_api_instance(src_path):
+    '''
+    returns an instance of the psaw object initialized using praw
+    
+    parameters:
+    --src_path: pathlib.path object pointing to the src directory or the directory containing api_credentials.txt
+    
+    returns:
+    --s_api: an instance of pushift's psaw api
+    '''
     # retrieve api credentials from .gitignore'd text file
     secrets_path = src_path / 'api_credentials.txt'
     secrets_txt = open(secrets_path, 'r')
@@ -55,6 +64,17 @@ def establish_binary_directory(directory_path):
             os.mkdir(str(directory_path / 'binary_tts' / split / category))
 
 def download_and_store_binary(toc, store_path, ttvs):
+    '''
+    downloads and stores images in train/test/val split directories
+    
+    parameters:
+    --toc: list of dictionaries containing the critical meta-data for the images to be downloaded
+    --store_path: pathlib.path object pointing to the directory containing the train/test/val folders
+    --ttvs: list of ints representing the number of images in each split [train, test, val]
+    
+    returns:
+    None
+    '''
     btrain_path = store_path / 'train'
     binary_balance_train = get_dir_balance(btrain_path)
     btest_path = store_path / 'test'
@@ -78,6 +98,16 @@ def download_and_store_binary(toc, store_path, ttvs):
                 count += 1
 
 def download_image(post, path):
+    '''
+    downloads images from the provided url and names the file with the post id the image came from
+    
+    parameters:
+    --post: a dictionary containing the meta-data for the image to be downloaded
+    --path: pathlib.path object pointing to the directory where the image should be downloaded to
+    
+    returns:
+    int: returns 1 if file succesfully downloaded, returns 0 is the file already exists
+    '''
     file_name = f"{post['id']}.{post['url'][-3:]}"
     file_path = path / file_name
     if file_path.is_file():
@@ -96,7 +126,7 @@ def download_image(post, path):
             
 def get_wordlists():
     '''
-    returns a dictionary containing regex patterns of the keywords for each class
+    returns a dictionary containing regex patterns of the keywords for each class stored in a dictionary
     '''
     wordlists = {'digital': ['digital', 'adobe', 'photoshop', 'procreate', 'wacom', 'tablet', 'illustrator', '3d', 'vector'],
                  'paint': ['acrylic', 'oil', 'watercolor', 'water color', 'watercolour', 'water colour'],
@@ -183,6 +213,19 @@ def make_post_dict_no_obj(post):
     return post_dict
 
 def fetch_balanced_submissions(n_to_fetch, s_api, date=int(dt.datetime.now().timestamp()), current_balance=None, binary=False):
+    '''
+    creates a list of praw post objects with a balanced number of each class
+    
+    parameters:
+    --n_to_fetch: int, number of posts to collect
+    --s_api: an instance of the psaw object
+    --date: int, unix timestamp for the date from which the search should begin, defaults to the current date and time
+    --current_balance: dict, dictionary containing the current number of images in each class
+    --binary: boolean indicating whether or not the dataset is a binary classification
+    
+    returns:
+    a list of praw submission objects
+    '''
     class_counts = {}
     # taking into account the current class balance if data has already been downloaded
     if type(current_balance) == dict:
@@ -220,6 +263,15 @@ def fetch_balanced_submissions(n_to_fetch, s_api, date=int(dt.datetime.now().tim
     return collected_posts
 
 def get_dir_balance(dir_path):
+    '''
+    returns a dictionary of the current class balance of images stored in the local directory
+    
+    parameters:
+    --dir_path: pathlib.path object pointing to the directory containing the currentyly stored images
+    
+    returns:
+    dictionary
+    '''
     current_b = {}
     with os.scandir(dir_path) as t_scan:
         for class_name in t_scan:
@@ -230,6 +282,16 @@ def get_dir_balance(dir_path):
 
 # function for locating posts by id for data exploration purposes
 def find_submission_dict_by_id(id_str, table_of_contents):
+    '''
+    searches the table of contents for a specific post given the post id
+    
+    parameters:
+    --id_str: string containing the post id
+    --table_of_contents: list of dictionaries containing the critical meta-data for each post
+    
+    returns:
+    dictionary containing the critical meta-data for the matching post
+    '''
     for post in table_of_contents:
         if post['id'] == id_str:
             return post

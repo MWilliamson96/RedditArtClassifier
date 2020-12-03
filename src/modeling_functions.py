@@ -21,6 +21,15 @@ from tensorflow.keras.preprocessing.image import ImageDataGenerator
 from sklearn.metrics import classification_report, confusion_matrix
 
 def make_image_generators(split_path):
+    '''
+    instantiates ImageDataGenerator objects and returns them
+    
+    parameters:
+    --split_path: a pathlib.path object pointing to the parent directory of train/test/val directories
+    
+    returns:
+    a tuple containing the ImageDataGenerator objects in the order (train, test, val)
+    '''
     train_path = split_path / 'train'
     train_generator = ImageDataGenerator().flow_from_directory(str(train_path),
                                                                target_size=(300, 300),
@@ -47,6 +56,9 @@ def make_image_generators(split_path):
     return (train_generator, test_generator, val_generator)
 
 def make_model():
+    '''
+    returns a keras model object with the most successful architecture i was able to achieve
+    '''
     model = models.Sequential()
     model.add(layers.Conv2D(35, (3, 3), activation='tanh', input_shape=(300, 300, 3)))
     model.add(layers.MaxPooling2D((5, 5)))
